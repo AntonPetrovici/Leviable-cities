@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pune 2050 – Liveable Cities Project</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+:root {
+  /* ── BRIGHT GRADIENT PALETTE ── */
+  --bg:           #f0f9ee;
+  --bg2:          #e8f5e3;
+  --bg3:          #d8eecc;
+  --surface:      rgba(255,255,255,0.72);
+  --surface2:     rgba(255,255,255,0.55);
+  --border:       rgba(80,160,60,0.18);
+  --border2:      rgba(80,160,60,0.32);
+
+  --green-bright: #3d9e2a;
+  --green-mid:    #4db835;
+  --green-deep:   #2a7a1a;
+  --green-forest: #1e5c12;
+  --green-leaf:   #5cc442;
+  --amber:        #e8a020;
+  --amber-dim:    #c47e10;
+  --earth:        #8a5e04;
+
+  --text:         #1a3312;
+  --text-muted:   #3a6030;
+  --text-dim:     #6a9a58;
+
+  --font-head:    'Playfair Display', Georgia, serif;
+  --font-body:    'DM Sans', sans-serif;
+
+  --radius:       14px;
+  --radius-lg:    20px;
+  --shadow:       0 8px 32px rgba(0,0,0,0.12);
+  --shadow-green: 0 0 30px rgba(80,180,60,0.15);
+
+  --card-h: 230px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  /* ── MAIN GRADIENT: warm green → white ── */
+  background:
+    linear-gradient(175deg,
+      #70ba5b 0%,
+      #8dcc78 8%,
+      #aedd98 16%,
+      #c8edb8 26%,
+      #dff5d0 36%,
+      #edfae6 50%,
+      #f5fdf0 65%,
+      #fafffe 80%,
+      #ffffff 100%
+    );
+  background-attachment: fixed;
+  color: var(--text);
+  line-height: 1.65;
+  font-size: clamp(14px, 1.8vw, 16px);
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Subtle leaf texture overlay */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(112,186,91,0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 85% 90%, rgba(141,204,120,0.08) 0%, transparent 50%);
+}
+
+/* ── SKIP LINK ── */
+.skip-link {
+  position: absolute; left: -999px; top: 10px;
+  background: var(--green-bright); color: #fff;
+  padding: 8px 14px; z-index: 3000;
+  text-decoration: none; font-weight: 700;
+  border-radius: 8px;
+}
+.skip-link:focus { left: 10px; }
+
+/* ── NAV ── */
+nav {
+  position: sticky; top: 0; z-index: 900;
+  display: flex; justify-content: center; flex-wrap: wrap;
+  gap: clamp(14px, 3vw, 30px);
+  padding: 14px clamp(16px, 5vw, 48px);
+  background: rgba(240,249,238,0.88);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 20px rgba(60,140,40,0.08);
+}
+nav a {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: clamp(12px, 1.4vw, 14px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-decoration: none;
+  position: relative;
+  padding: 4px 0;
+  transition: color 0.2s;
+}
+nav a::after {
+  content: '';
+  position: absolute; left: 0; bottom: -2px;
+  width: 0; height: 1.5px;
+  background: var(--green-bright);
+  transition: width 0.25s;
+  border-radius: 2px;
+}
+nav a:hover { color: var(--green-forest); }
+nav a:hover::after, nav a:focus-visible::after { width: 100%; }
+nav a:focus-visible { outline: 2px solid var(--green-bright); outline-offset: 4px; border-radius: 2px; }
+
+/* ── HERO ── */
+.hero {
+  position: relative; z-index: 1;
+  min-height: 100svh;
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  text-align: center;
+  padding: clamp(64px,10vw,110px) clamp(20px,6vw,80px) clamp(56px,8vw,90px);
+  overflow: hidden;
+}
+.hero::after {
+  content: '';
+  position: absolute; inset: 0; z-index: -1;
+  background:
+    radial-gradient(ellipse 70% 55% at 30% 20%, rgba(112,186,91,0.22) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 75% 75%, rgba(141,204,120,0.14) 0%, transparent 55%);
+  animation: blobDrift 18s ease-in-out infinite alternate;
+}
+@keyframes blobDrift {
+  0%   { transform: scale(1) translateY(0); }
+  100% { transform: scale(1.08) translateY(-20px); }
+}
+
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: rgba(112,186,91,0.20);
+  border: 1px solid rgba(80,160,60,0.40);
+  border-radius: 999px;
+  padding: 5px 16px;
+  font-size: clamp(10px, 1.2vw, 12px);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--green-forest);
+  margin-bottom: 22px;
+  font-weight: 500;
+}
+.hero-badge::before { content: '🌿'; font-size: 14px; }
+
+.hero h1 {
+  font-family: var(--font-head);
+  font-size: clamp(56px, 11vw, 118px);
+  font-weight: 900;
+  line-height: 0.92;
+  letter-spacing: -0.01em;
+  background: linear-gradient(160deg, #2a7a1a 0%, #3d9e2a 40%, #c47e10 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 14px;
+}
+.hero-sub {
+  font-family: var(--font-head);
+  font-size: clamp(15px, 2.2vw, 22px);
+  font-weight: 700;
+  font-style: italic;
+  color: var(--text-muted);
+  margin-bottom: 18px;
+}
+.hero-desc {
+  max-width: 600px;
+  font-size: clamp(13px, 1.7vw, 16px);
+  color: var(--text-muted);
+  font-weight: 300;
+  margin-bottom: 8px;
+}
+.hero-fact {
+  max-width: 560px;
+  font-size: clamp(11px, 1.3vw, 13px);
+  color: var(--text-dim);
+  margin-bottom: 34px;
+}
+
+.hero-images {
+  display: flex; gap: clamp(10px,2vw,16px);
+  flex-wrap: wrap; justify-content: center;
+  margin-bottom: 34px;
+}
+.hero-img {
+  width: clamp(130px,18vw,190px);
+  height: clamp(85px,11vw,125px);
+  border-radius: var(--radius);
+  object-fit: cover;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border2);
+  transition: transform 0.3s, box-shadow 0.3s;
+  filter: saturate(0.9);
+}
+.hero-img:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 18px 44px rgba(0,0,0,0.18), var(--shadow-green);
+  filter: saturate(1.1);
+}
+
+.hero-box {
+  max-width: 620px; width: 100%;
+  padding: clamp(16px,3vw,24px) clamp(18px,4vw,30px);
+  border-radius: var(--radius-lg);
+  background: rgba(255,255,255,0.80);
+  border: 1px solid var(--border2);
+  text-align: left;
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow), var(--shadow-green);
+}
+.hero-box h3 {
+  font-family: var(--font-head);
+  font-size: clamp(13px,1.5vw,15px);
+  font-weight: 700;
+  color: var(--green-deep);
+  margin-bottom: 10px;
+  letter-spacing: 0.02em;
+}
+.hero-box ul {
+  padding-left: 18px;
+  font-size: clamp(12px,1.4vw,14px);
+  color: var(--text-muted);
+  font-weight: 300;
+}
+.hero-box li { margin-bottom: 6px; }
+
+/* ── SECTION SHELL ── */
+.section {
+  position: relative; z-index: 1;
+  padding: clamp(50px,8vw,96px) clamp(20px,8vw,120px);
+  border-top: 1px solid var(--border);
+}
+.section-label {
+  display: block;
+  font-size: clamp(9px,1.1vw,11px);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--green-mid);
+  text-align: center;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.section h2 {
+  font-family: var(--font-head);
+  font-size: clamp(26px,5vw,52px);
+  font-weight: 900;
+  text-align: center;
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+  color: var(--text);
+}
+.section h2 .accent { color: var(--green-bright); }
+.section-intro {
+  max-width: 680px;
+  margin: 0 auto clamp(28px,4vw,44px);
+  text-align: center;
+  font-size: clamp(13px,1.5vw,15px);
+  color: var(--text-muted);
+  font-weight: 300;
+  line-height: 1.7;
+}
+
+/* ── CARDS GRID — fully responsive equal-height grid ── */
+.cards-grid {
+  display: grid;
+  /* 
+    Columns: always even count so cards pair up nicely.
+    Uses auto-fill with a min that adapts to screen:
+    - 4 col on wide screens  (≥ 900px)
+    - 3 col on medium        (≥ 600px)
+    - 2 col on small         (≥ 340px)
+    - 1 col on very small
+    The key: minmax with a % floor so the grid always fills evenly.
+  */
+  grid-template-columns: repeat(auto-fill, minmax(max(220px, calc(33.333% - 16px)), 1fr));
+  gap: clamp(12px, 2vw, 20px);
+  /* All rows same height = symmetrical grid */
+  grid-auto-rows: var(--card-h);
+  align-items: stretch;
+}
+
+/* On smaller screens, force 2 columns for better symmetry */
+@media (max-width: 700px) {
+  .cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: var(--card-h);
+  }
+}
+@media (max-width: 420px) {
+  .cards-grid {
+    grid-template-columns: 1fr 1fr;
+    --card-h: 200px;
+  }
+}
+
+/* ── FLIP CARDS ── */
+.flip-card {
+  height: var(--card-h);
+  perspective: 1200px;
+  cursor: pointer;
+  /* Make sure card always fills its grid cell */
+  width: 100%;
+}
+.flip-inner {
+  position: relative;
+  width: 100%; height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.65s cubic-bezier(0.4, 0.2, 0.2, 1);
+  border-radius: var(--radius);
+}
+@media (hover: hover) {
+  .flip-card:hover .flip-inner { transform: rotateY(180deg); }
+}
+.flip-card.flipped .flip-inner { transform: rotateY(180deg); }
+
+.flip-front, .flip-back {
+  position: absolute; inset: 0;
+  border-radius: var(--radius);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  padding: clamp(14px,2vw,22px);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+}
+.flip-back { transform: rotateY(180deg); }
+
+.card-icon {
+  font-size: clamp(26px,3.5vw,36px);
+  margin-bottom: 8px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.flip-front h3 {
+  font-family: var(--font-head);
+  font-size: clamp(13px,1.8vw,17px);
+  font-weight: 700;
+  margin-bottom: 5px;
+  line-height: 1.2;
+}
+.flip-front p {
+  font-size: clamp(11px,1.2vw,13px);
+  opacity: 0.85;
+  font-weight: 300;
+}
+.flip-back {
+  font-size: clamp(11px,1.3vw,13px);
+  font-weight: 400;
+  line-height: 1.65;
+}
+
+/* Issue card fronts */
+.issue-card .flip-front { color: #0f1a0d; }
+.issue-card:nth-child(1) .flip-front { background: linear-gradient(135deg, #a3e635, #fde68a); }
+.issue-card:nth-child(2) .flip-front { background: linear-gradient(135deg, #fb923c, #fde68a); }
+.issue-card:nth-child(3) .flip-front { background: linear-gradient(135deg, #38bdf8, #86efac); }
+.issue-card:nth-child(4) .flip-front { background: linear-gradient(135deg, #4ade80, #a5f3fc); }
+.issue-card:nth-child(5) .flip-front { background: linear-gradient(135deg, #fbbf24, #fb923c); }
+.issue-card:nth-child(6) .flip-front { background: linear-gradient(135deg, #86efac, #d9f99d); }
+.issue-card .flip-back {
+  background: linear-gradient(160deg, #1a4a1a, #0e2e0e);
+  border: 1px solid rgba(74,222,128,0.3);
+  color: #c8f0b8;
+}
+
+/* Solution card fronts */
+.solution-card .flip-front { color: #0a160a; }
+.solution-card:nth-child(1) .flip-front { background: linear-gradient(135deg, #22c55e, #86efac); }
+.solution-card:nth-child(2) .flip-front { background: linear-gradient(135deg, #16a34a, #4ade80); }
+.solution-card:nth-child(3) .flip-front { background: linear-gradient(135deg, #15803d, #86efac); }
+.solution-card:nth-child(4) .flip-front { background: linear-gradient(135deg, #4ade80, #d9f99d); }
+.solution-card:nth-child(5) .flip-front { background: linear-gradient(135deg, #fbbf24, #86efac); }
+.solution-card:nth-child(6) .flip-front { background: linear-gradient(135deg, #22c55e, #a3e635); }
+.solution-card .flip-back {
+  background: linear-gradient(160deg, #0d3820, #071e10);
+  border: 1px solid rgba(134,239,172,0.35);
+  color: #b8f0d0;
+}
+
+/* ── FLOOD RAIN ── */
+.flood-front { position: relative; overflow: hidden; }
+.flood-rain {
+  position: absolute; inset: 0;
+  pointer-events: none; overflow: hidden;
+  border-radius: var(--radius);
+}
+.drop {
+  position: absolute; width: 1.5px;
+  background: rgba(125,211,252,0.75);
+  bottom: 100%; border-radius: 99px;
+  animation: rain 0.95s linear infinite;
+}
+.drop:nth-child(1) { left:8%;  height:14px; animation-delay:0s; }
+.drop:nth-child(2) { left:22%; height:18px; animation-delay:-0.2s; }
+.drop:nth-child(3) { left:38%; height:12px; animation-delay:-0.45s; }
+.drop:nth-child(4) { left:53%; height:20px; animation-delay:-0.1s; }
+.drop:nth-child(5) { left:66%; height:15px; animation-delay:-0.55s; }
+.drop:nth-child(6) { left:80%; height:17px; animation-delay:-0.3s; }
+.drop:nth-child(7) { left:92%; height:13px; animation-delay:-0.65s; }
+@keyframes rain {
+  0%   { transform: translateY(0);     opacity: 0; }
+  10%  { opacity: 1; }
+  100% { transform: translateY(300px); opacity: 0; }
+}
+
+/* ── MAP ── */
+#map {
+  width: 100%; max-width: 920px;
+  height: clamp(280px, 42vw, 450px);
+  margin: 22px auto 12px;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--border2);
+  box-shadow: var(--shadow), var(--shadow-green);
+}
+.map-legend {
+  max-width: 920px; margin: 10px auto 0;
+  font-size: clamp(11px, 1.3vw, 13px);
+  color: var(--text-muted);
+  display: flex; flex-wrap: wrap; gap: 16px; justify-content: center;
+}
+.legend-item { display: flex; align-items: center; gap: 7px; }
+.legend-color { width: 16px; height: 4px; border-radius: 99px; }
+
+/* ── 3D MODEL PANEL ── */
+.model3d-wrapper {
+  max-width: 920px; margin: 42px auto 0;
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: clamp(18px,3vw,34px);
+  align-items: center;
+}
+@media (max-width:740px) { .model3d-wrapper { grid-template-columns:1fr; } }
+
+.model3d-info h3 {
+  font-family: var(--font-head);
+  font-size: clamp(17px,2.2vw,22px);
+  font-weight: 700;
+  color: var(--green-deep);
+  margin-bottom: 10px;
+}
+.model3d-info p, .model3d-info li {
+  font-size: clamp(12px,1.4vw,14px);
+  color: var(--text-muted);
+  font-weight: 300;
+}
+.model3d-info ul { padding-left: 18px; margin: 10px 0 0; }
+.model3d-info li { margin-bottom: 7px; }
+.model3d-hint {
+  margin-top: 14px;
+  font-size: clamp(11px,1.2vw,12px);
+  color: var(--text-dim);
+}
+.model3d-frame {
+  border-radius: var(--radius-lg); overflow: hidden;
+  box-shadow: var(--shadow), var(--shadow-green);
+  border: 2px solid var(--border2);
+  background: var(--bg3);
+}
+.model3d-credit {
+  background: var(--bg2); padding: 6px 12px;
+  font-size: 11px; color: var(--text-dim);
+}
+.model3d-credit a { color: #1CAAD9; font-weight: 600; text-decoration: none; }
+.model3d-credit a:hover { text-decoration: underline; }
+
+/* ── CHARTS ── */
+.chart-wrap {
+  max-width: 800px; margin: 0 auto 32px;
+}
+canvas {
+  width: 100% !important;
+  background: rgba(255,255,255,0.75);
+  border-radius: var(--radius-lg);
+  padding: clamp(12px,2vw,20px);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  display: block;
+}
+.chart-caption {
+  text-align: center;
+  font-size: clamp(11px,1.3vw,13px);
+  color: var(--text-dim);
+  margin-top: 9px;
+  font-weight: 300;
+  font-style: italic;
+}
+
+/* ── SDG CARDS ── */
+.sdg-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(240px,100%),1fr));
+  gap: clamp(12px,2vw,20px);
+}
+.sdg-card {
+  border-radius: var(--radius);
+  padding: clamp(16px,2.5vw,24px);
+  text-align: center;
+  color: white;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-start;
+  gap: 8px;
+  box-shadow: 0 6px 22px rgba(0,0,0,0.15);
+  transition: transform 0.25s, box-shadow 0.25s;
+  min-height: 185px;
+}
+.sdg-card:hover { transform: translateY(-6px); box-shadow: 0 18px 38px rgba(0,0,0,0.2); }
+.sdg-card .icon { font-size: clamp(26px,3.5vw,34px); }
+.sdg-card h3 {
+  font-family: var(--font-head);
+  font-size: clamp(12px,1.5vw,15px);
+  font-weight: 700; line-height: 1.3;
+}
+.sdg-card p { font-size: clamp(11px,1.2vw,13px); font-weight: 300; opacity: 0.9; line-height: 1.5; }
+
+.sdg-cards-grid .sdg-card:nth-child(1) { background: linear-gradient(140deg,#166534,#14532d); }
+.sdg-cards-grid .sdg-card:nth-child(2) { background: linear-gradient(140deg,#0e7490,#164e63); }
+.sdg-cards-grid .sdg-card:nth-child(3) { background: linear-gradient(140deg,#15803d,#052e16); }
+.sdg-cards-grid .sdg-card:nth-child(4) { background: linear-gradient(140deg,#1a5c30,#0d3320); }
+.sdg-cards-grid .sdg-card:nth-child(5) { background: linear-gradient(140deg,#065f46,#022c22); }
+.sdg-cards-grid .sdg-card:nth-child(6) { background: linear-gradient(140deg,#0f766e,#134e4a); }
+
+/* ── LEAF DIVIDER ── */
+.leaf-divider {
+  text-align: center;
+  font-size: 20px;
+  opacity: 0.35;
+  letter-spacing: 6px;
+  margin: 0 auto 16px;
+}
+
+/* ── FOOTER ── */
+footer {
+  position: relative; z-index: 1;
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  padding: 28px clamp(20px,6vw,60px);
+  text-align: center;
+  font-size: clamp(11px,1.3vw,13px);
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+footer span { color: var(--green-mid); }
+
+/* ── TAP HINT ── */
+.tap-hint {
+  display: none;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: -8px; margin-bottom: 12px;
+  font-style: italic;
+}
+@media (hover: none) { .tap-hint { display: block; } }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #e8f5e3; }
+::-webkit-scrollbar-thumb { background: #70ba5b; border-radius: 999px; }
+</style>
+</head>
+<body>
+
+<a href="#home" class="skip-link">Skip to main content</a>
+
+<nav>
+  <a href="#home">Home</a>
+  <a href="#issues">Issues</a>
+  <a href="#solutions">Solutions</a>
+  <a href="#pune-map-section">City Plan</a>
+  <a href="#stats">Stats</a>
+  <a href="#sdg">SDGs</a>
+</nav>
+
+<!-- HERO -->
+<section id="home" class="hero">
+  <div class="hero-badge">Liveable Cities Project</div>
+  <h1>Pune 2050</h1>
+  <div class="hero-sub">Designing a Liveable Future</div>
+  <p class="hero-desc">Transforming Pune into a sustainable and inclusive city by addressing key environmental, transport and social challenges.</p>
+  <p class="hero-fact">Pune sits on the Mula–Mutha rivers, surrounded by hills, and is one of India's fastest‑growing education and tech hubs — today home to over 7 million people.</p>
+  <div class="hero-images">
+    <img class="hero-img" src="https://images.pexels.com/photos/4666852/pexels-photo-4666852.jpeg?auto=compress&cs=tinysrgb&w=800" alt="City skyline with green areas">
+    <img class="hero-img" src="https://images.pexels.com/photos/4606728/pexels-photo-4606728.jpeg?auto=compress&cs=tinysrgb&w=800" alt="People walking and cycling in a street">
+  </div>
+  <div class="hero-box">
+    <h3>🌿 What this project shows</h3>
+    <ul>
+      <li>The main challenges facing Pune today: air pollution, congestion, flooding, water stress and social inequality.</li>
+      <li>A 2050 vision with cleaner mobility, cooler neighbourhoods and safer public space.</li>
+      <li>How these ideas link to the UN Sustainable Development Goals (SDGs).</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ISSUES -->
+<section id="issues" class="section">
+  <span class="section-label">Today's Problems</span>
+  <h2>Major Urban <span class="accent">Challenges</span></h2>
+  <p class="section-intro">Pune's growth around the Mula–Mutha river system, expanding IT corridors and rising car ownership create pressure on air, water and streets.</p>
+  <p class="tap-hint">Tap a card to reveal more</p>
+  <div class="cards-grid">
+
+    <div class="flip-card issue-card" tabindex="0" role="button" aria-label="Air Pollution">
+      <div class="flip-inner">
+        <div class="flip-front">
+          <div class="card-icon">🌫️</div>
+          <h3>Air Pollution</h3>
+          <p>High PM levels from traffic and construction.</p>
+        </div>
+        <div class="flip-back">
+          Pune's growing vehicle fleet and construction sites add fine dust and exhaust to the air, especially in busy corridors like Swargate and Hinjawadi.
+        </div>
+      </div>
+    </div>
+
+    <div class="flip-card issue-card" tabindex="0" role="button" aria-label="Traffic Congestion">
+      <div class="flip-inner">
+        <div class="flip-front">
+          <div class="card-icon">🚗</div>
+          <h3>Traffic Congestion</h3>
+          <p>Slow, unreliable daily trips.</p>
+        </div>
+        <div class="flip-back">
+          Many commuters travel from the outskirts to IT parks and universities, overloading radial roads and junctions with long peak‑hour delays.
+        </div>
+      </div>
+    </div>
+
+    <div class="flip-card issue-card" tabindex="0" role="button" aria-label="Flooding">
+      <div class="flip-inner">
+        <div class="flip-front flood-front">
+          <div class="card-icon">🌧️</div>
+          <h3>Flooding</h3>
+          <p>Monsoon waterlogging in low‑lying areas.</p>
+          <div class="flood-rain">
+            <div class="drop"></div><div class="drop"></div><div class="drop"></div>
+            <div class="drop"></div><div class="drop"></div><div class="drop"></div><div class="drop"></div>
+          </div>
+        </div>
+        <div class="flip-back">
+          Intense monsoon showers and encroached drains cause waterlogging near riverbanks and underpasses, blocking buses, two‑wheelers and emergency services.
+        </div>
+      </div>
+    </div>
+
+    <div class="flip-card issue-card" tabindex="0" role="button" aria-label="Water Supply">
+      <div class="flip-inner">
+        <div class="flip-front">
+          <div class="card-icon">🚰</div>
+          <h3>Water Supply</h3>
+          <p>Unequal access and stress on rivers.</p>
+        </div>
+        <div class="flip-back">
+          While some gated communities receive regular supply, informal settlements face shortages, and pollution threatens river and groundwater quality.
+        </div>
+      </div>
+    </div>
+
+    <div class="flip-card issue-card" tabindex="0" role="button" aria-label="Urban Heat">
+      <div class="flip-inner">
+        <div class="flip-front">
+          <div class="card-icon">🔥</div>
+          <h3>Urban Heat</h3>
+          <p>Concrete growth and little shade.</p>
+        </div>
+        <div class="flip-back">
+          Loss of tree cover makes dense parts of Pune several degrees hotter than nearby rural areas, especially along main roads.
+        </div>
+      </div>
+    </div>
+
+    <div class="flip-card issue-card" tabindex="0" role="button" aria-label="Social Segregation">
+      <div class="flip-inner">
+        <div class="flip-front">
+          <div class="card-icon">🏚️</div>
+          <h3>Social Segregation</h3>
+          <p>Separated housing and services.</p>
+        </div>
+        <div class="flip-back">
+          High‑rise enclaves, informal settlements and older cores often have very different access to parks, schools, health care and safe public space.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- SOLUTIONS -->
+<section id="solutions" class="section">
+  <span class="section-label">The Vision</span>
+  <h2>Solutions for <span class="accent">Pune 2050</span></h2>
+  <p class="section-intro">The 2050 vision keeps Pune walkable and liveable — cleaner mobility, cooler streets and mixed, inclusive neighbourhoods.</p>
+  <p class="tap-hint">Tap a card to reveal more</p>
+  <div class="cards-grid">
+
+    <div class="flip-card solution-card" tabindex="0" role="button" aria-label="Green Corridors">
+      <div class="flip-inner">
+        <div class="flip-front">
+          <div class="card-icon">🌳</div>
+          <h3>Green Corridors</h3>
+          <p>Tree‑lined streets and riverfront parks.</p>
+        </div>
+        <div class="flip-back">
+          Continuous shade trees along main roads and a restored Mula–Mutha riverfront act as "cool corridors", lowering temperatures and improving air quality.
+        </div>
+      </div>
+    </div>
+
+    <div class="flip-card solution-card" tabindex="0" role="button" aria-label="Metro Expansion">
+      <div class="flip-inner">
+        <div class="flip-front">
+          <div class="card-icon">🚇</div>
+          <h3>Metro Expansion</h3>
+          <p>Fast routes between hubs.</p>
+        </div>
+        <div class="flip-back">
+          A denser metro network links major campuses, IT parks and old city areas, so most daily commutes can happen by high‑capacity public transport.
+        </div>
+      </div>
+    </div>
+
+    <div class="flip-card solution-card" tabindex="0" role="button" aria-label="Water Management">
+      <div class="flip-inner">
+        <div class="flip-front">
+          <div class="card-icon">💧</div>
+          <h3>Water Management</h3>
+          <p>Rain‑smart streets and storage.</p>
+        </div>
+        <div class="flip-back">
+          Green drains, permeable pavements and neighbourhood‑level rainwater harvesting reduce flooding and recharge groundwater during the monsoon.
+        </div>
+      </div>
+    </div>
+
+    <div class="flip-card solution-card" tabindex="0" role="button" aria-label="Inclusive Neighborhoods">
+      <div class="flip-inner">
+        <div class="flip-front">
+          <div class="card-icon">🏘️</div>
+          <h3>Inclusive Neighborhoods</h3>
+          <p>Mixed‑use, mixed‑income areas.</p>
+        </div>
+        <div class="flip-back">
+          Housing, shops and services woven together, with safe public spaces and universal design so all age and income groups share the same city.
+        </div>
+      </div>
+    </div>
+
+    <div class="flip-card solution-card" tabindex="0" role="button" aria-label="Renewable Energy">
+      <div class="flip-inner">
+        <div class="flip-front">
+          <div class="card-icon">☀️</div>
+          <h3>Renewable Energy</h3>
+          <p>Solar Pune for 2050.</p>
+        </div>
+        <div class="flip-back">
+          Rooftop solar on apartments, campuses and public buildings powers lighting, cooling and transport charging, cutting coal emissions.
+        </div>
+      </div>
+    </div>
+
+    <div class="flip-card solution-card" tabindex="0" role="button" aria-label="Active Mobility">
+      <div class="flip-inner">
+        <div class="flip-front">
+          <div class="card-icon">🚴‍♀️</div>
+          <h3>Active Mobility</h3>
+          <p>Safe cycling and walking networks.</p>
+        </div>
+        <div class="flip-back">
+          Protected cycle tracks and continuous footpaths connect metro stations, BRT stops and schools so short trips happen by bike or on foot.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- MAP -->
+<section id="pune-map-section" class="section">
+  <span class="section-label">City Plan</span>
+  <h2>Pune — <span class="accent">Overview</span> & Location</h2>
+  <p class="section-intro">Pune lies on the Deccan plateau about 150 km inland from Mumbai. This map highlights a proposed metro corridor, a green corridor and a flood‑prone zone.</p>
+
+  <div id="map" aria-label="Map of Pune"></div>
+  <div class="map-legend">
+    <div class="legend-item"><span class="legend-color" style="background:#e8a020;"></span><span>Metro corridor</span></div>
+    <div class="legend-item"><span class="legend-color" style="background:#3d9e2a;"></span><span>Green corridor</span></div>
+    <div class="legend-item"><span class="legend-color" style="background:#38bdf8;"></span><span>Flood‑risk zone</span></div>
+  </div>
+
+  <div class="model3d-wrapper">
+    <div class="model3d-info">
+      <h3>🏙️ Pune 2050 — City Model</h3>
+      <p>Explore this interactive 3D city exterior to visualise what a future Pune neighbourhood could look like:</p>
+      <ul>
+        <li>Most people travel by metro and cycle along shaded, green streets.</li>
+        <li>Mixed‑use buildings cluster near public transport, not in car‑dependent enclaves.</li>
+        <li>Streets are designed for buses, bikes and pedestrians first.</li>
+      </ul>
+      <p class="model3d-hint">🖱️ Drag to rotate · Scroll to zoom · Right‑click to pan</p>
+    </div>
+    <div class="model3d-frame">
+      <div style="position:relative;">
+        <iframe title="City Exterior" frameborder="0" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true"
+          allow="autoplay; fullscreen; xr-spatial-tracking" xr-spatial-tracking execution-while-out-of-viewport execution-while-not-rendered web-share
+          src="https://sketchfab.com/models/8e998cf6ae9a4cc1972698d50c59bc9e/embed?preload=1&transparent=1"
+          style="width:100%;height:clamp(260px,38vw,450px);display:block;"></iframe>
+        <div style="position:absolute;top:40%;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none;">
+          <div style="font-size:17px;font-weight:800;color:white;letter-spacing:2px;font-family:'Playfair Display',serif;">Anteam</div>
+          <div style="font-size:11px;color:#4ade80;margin-top:3px;">Pune</div>
+        </div>
+      </div>
+      <div class="model3d-credit">
+        <a href="https://sketchfab.com/3d-models/city-exterior-8e998cf6ae9a4cc1972698d50c59bc9e" target="_blank" rel="nofollow">City Exterior</a> by
+        <a href="https://sketchfab.com/gorkstudio" target="_blank" rel="nofollow">Gork Studio</a> on
+        <a href="https://sketchfab.com" target="_blank" rel="nofollow">Sketchfab</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CHARTS -->
+<section id="stats" class="section">
+  <span class="section-label">Data & Projections</span>
+  <h2><span class="accent">Key Stats</span> & Trends</h2>
+  <p class="section-intro">How a shift towards public transport, better drainage and green infrastructure could change daily life in Pune by 2050.</p>
+  <div class="chart-wrap">
+    <canvas id="metroChart" aria-label="Metro usage chart" role="img"></canvas>
+    <p class="chart-caption">By 2050, a much larger share of daily trips is made by metro, easing road congestion.</p>
+  </div>
+  <div class="chart-wrap">
+    <canvas id="airChart" aria-label="Air quality chart" role="img"></canvas>
+    <p class="chart-caption">Cleaner vehicles and more trees push air quality towards healthier levels for residents.</p>
+  </div>
+  <div class="chart-wrap">
+    <canvas id="floodChart" aria-label="Flooding chart" role="img"></canvas>
+    <p class="chart-caption">Smart drainage and protected flood plains reduce monsoon street flooding.</p>
+  </div>
+</section>
+
+<!-- SDGs -->
+<section id="sdg" class="section">
+  <span class="section-label">Global Framework</span>
+  <h2>UN Sustainable <span class="accent">Development Goals</span></h2>
+  <p class="section-intro">Pune 2050 is guided by several SDGs that link local actions to global climate and equality targets.</p>
+  <div class="sdg-cards-grid">
+    <div class="sdg-card"><div class="icon">♀️</div><h3>SDG 5 – Gender Equality</h3><p>Well‑lit public spaces and safe transit routes for all genders at all times.</p></div>
+    <div class="sdg-card"><div class="icon">💧</div><h3>SDG 6 – Clean Water</h3><p>Cleaner rivers, better sewerage and neighbourhood rainwater harvesting.</p></div>
+    <div class="sdg-card"><div class="icon">⚖️</div><h3>SDG 10 – Reduced Inequalities</h3><p>Mixed‑income housing and basic services within reach of every resident.</p></div>
+    <div class="sdg-card"><div class="icon">🏙️</div><h3>SDG 11 – Sustainable Cities</h3><p>Compact, transit‑oriented growth instead of endless low‑density sprawl.</p></div>
+    <div class="sdg-card"><div class="icon">🌍</div><h3>SDG 13 – Climate Action</h3><p>Lower emissions through public transport, green corridors and efficient buildings.</p></div>
+    <div class="sdg-card"><div class="icon">🏗️</div><h3>SDG 9 – Innovation & Infrastructure</h3><p>Modern, resilient infrastructure supporting Pune's tech and education role.</p></div>
+  </div>
+</section>
+
+<footer>Liveable Cities Project <span>✦</span> Pune 2050</footer>
+
+<script>
+/* FLIP CARDS */
+document.querySelectorAll('.flip-card').forEach(card => {
+  card.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      card.classList.toggle('flipped');
+    }
+  });
+  card.addEventListener('click', () => {
+    if (window.matchMedia('(hover: none)').matches) {
+      card.classList.toggle('flipped');
+    }
+  });
+});
+
+/* MAP */
+var map = L.map('map',{zoomControl:true,scrollWheelZoom:false}).setView([18.5204,73.8567],12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+L.polyline([[18.48,73.85],[18.51,73.86],[18.53,73.87],[18.56,73.88]],{color:'#e8a020',weight:5}).addTo(map).bindPopup('Example Metro Corridor');
+L.polyline([[18.50,73.84],[18.52,73.86],[18.55,73.89]],{color:'#3d9e2a',weight:7}).addTo(map).bindPopup('Proposed Green Corridor');
+L.circle([18.53,73.87],{radius:1400,color:'#38bdf8',fillOpacity:0.3}).addTo(map).bindPopup('Flood‑prone area near the river');
+
+/* CHART DEFAULTS */
+Chart.defaults.color = '#3a6030';
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size = 13;
+
+const gridColor = 'rgba(60,140,40,0.10)';
+const titleFont = { family: "'Playfair Display', serif", size: 15, weight: '700' };
+const titleColor = '#1a3312';
+
+new Chart(document.getElementById('metroChart'), {
+  type: 'bar',
+  data: {
+    labels: ['2023','2030','2040','2050'],
+    datasets: [{
+      label: 'Metro Usage (%)',
+      data: [15,30,50,70],
+      backgroundColor: ['rgba(61,158,42,0.45)','rgba(61,158,42,0.55)','rgba(61,158,42,0.72)','rgba(61,158,42,0.92)'],
+      borderColor:     ['#3d9e2a','#3d9e2a','#3d9e2a','#2a7a1a'],
+      borderWidth: 2, borderRadius: 7
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend:{display:false}, title:{display:true,text:'Projected Share of Daily Trips by Metro',font:titleFont,color:titleColor,padding:{bottom:14}} },
+    scales: {
+      y: { beginAtZero:true, max:100, title:{display:true,text:'Share of daily trips (%)'}, grid:{color:gridColor} },
+      x: { title:{display:true,text:'Year'}, grid:{display:false} }
+    }
+  }
+});
+
+new Chart(document.getElementById('airChart'), {
+  type: 'line',
+  data: {
+    labels: ['2023','2030','2040','2050'],
+    datasets: [{
+      label: 'AQI',
+      data: [120,100,70,40],
+      borderColor: '#fb923c',
+      backgroundColor: 'rgba(251,146,60,0.10)',
+      fill: true, tension: 0.4,
+      pointBackgroundColor: '#fb923c', pointRadius: 5, pointHoverRadius: 7
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend:{display:false}, title:{display:true,text:'Air Quality Index — Lower is Better',font:titleFont,color:titleColor,padding:{bottom:14}} },
+    scales: {
+      y: { beginAtZero:true, max:150, title:{display:true,text:'AQI'}, grid:{color:gridColor} },
+      x: { title:{display:true,text:'Year'}, grid:{display:false} }
+    }
+  }
+});
+
+new Chart(document.getElementById('floodChart'), {
+  type: 'bar',
+  data: {
+    labels: ['2023','2030','2040','2050'],
+    datasets: [{
+      label: 'Flooded Streets (%)',
+      data: [25,20,12,5],
+      backgroundColor: ['rgba(56,189,248,0.45)','rgba(56,189,248,0.55)','rgba(56,189,248,0.72)','rgba(56,189,248,0.92)'],
+      borderColor:     ['#38bdf8','#38bdf8','#38bdf8','#7dd3fc'],
+      borderWidth: 2, borderRadius: 7
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend:{display:false}, title:{display:true,text:'Streets Affected by Monsoon Flooding',font:titleFont,color:titleColor,padding:{bottom:14}} },
+    scales: {
+      y: { beginAtZero:true, max:30, title:{display:true,text:'Share of streets (%)'}, grid:{color:gridColor} },
+      x: { title:{display:true,text:'Year'}, grid:{display:false} }
+    }
+  }
+});
+</script>
+</body>
+</html>
