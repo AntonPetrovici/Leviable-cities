@@ -15,7 +15,6 @@
 
 <style>
 :root {
-  /* ── BRIGHT GRADIENT PALETTE ── */
   --bg:           #f0f9ee;
   --bg2:          #e8f5e3;
   --bg3:          #d8eecc;
@@ -53,7 +52,6 @@ html { scroll-behavior: smooth; }
 
 body {
   font-family: var(--font-body);
-  /* ── MAIN GRADIENT: warm green → white ── */
   background:
     linear-gradient(175deg,
       #70ba5b 0%,
@@ -74,7 +72,6 @@ body {
   min-height: 100vh;
 }
 
-/* Subtle leaf texture overlay */
 body::before {
   content: '';
   position: fixed; inset: 0; z-index: 0;
@@ -84,7 +81,6 @@ body::before {
     radial-gradient(ellipse 50% 40% at 85% 90%, rgba(141,204,120,0.08) 0%, transparent 50%);
 }
 
-/* ── SKIP LINK ── */
 .skip-link {
   position: absolute; left: -999px; top: 10px;
   background: var(--green-bright); color: #fff;
@@ -94,7 +90,6 @@ body::before {
 }
 .skip-link:focus { left: 10px; }
 
-/* ── NAV ── */
 nav {
   position: sticky; top: 0; z-index: 900;
   display: flex; justify-content: center; flex-wrap: wrap;
@@ -129,7 +124,6 @@ nav a:hover { color: var(--green-forest); }
 nav a:hover::after, nav a:focus-visible::after { width: 100%; }
 nav a:focus-visible { outline: 2px solid var(--green-bright); outline-offset: 4px; border-radius: 2px; }
 
-/* ── HERO ── */
 .hero {
   position: relative; z-index: 1;
   min-height: 100svh;
@@ -248,7 +242,6 @@ nav a:focus-visible { outline: 2px solid var(--green-bright); outline-offset: 4p
 }
 .hero-box li { margin-bottom: 6px; }
 
-/* ── SECTION SHELL ── */
 .section {
   position: relative; z-index: 1;
   padding: clamp(50px,8vw,96px) clamp(20px,8vw,120px);
@@ -285,50 +278,39 @@ nav a:focus-visible { outline: 2px solid var(--green-bright); outline-offset: 4p
   line-height: 1.7;
 }
 
-/* ── CARDS GRID — fully responsive equal-height grid ── */
+/* ── CARDS GRID ── */
 .cards-grid {
   display: grid;
-  /* 
-    Columns: always even count so cards pair up nicely.
-    Uses auto-fill with a min that adapts to screen:
-    - 4 col on wide screens  (≥ 900px)
-    - 3 col on medium        (≥ 600px)
-    - 2 col on small         (≥ 340px)
-    - 1 col on very small
-    The key: minmax with a % floor so the grid always fills evenly.
-  */
-  grid-template-columns: repeat(auto-fill, minmax(max(220px, calc(33.333% - 16px)), 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: clamp(12px, 2vw, 20px);
-  /* All rows same height = symmetrical grid */
   grid-auto-rows: var(--card-h);
-  align-items: stretch;
 }
-
-/* On smaller screens, force 2 columns for better symmetry */
 @media (max-width: 700px) {
   .cards-grid {
     grid-template-columns: repeat(2, 1fr);
-    grid-auto-rows: var(--card-h);
   }
 }
 @media (max-width: 420px) {
   .cards-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, 1fr);
     --card-h: 200px;
   }
 }
 
 /* ── FLIP CARDS ── */
 .flip-card {
+  /* Strict fixed dimensions — no exceptions */
+  width: 100%;
   height: var(--card-h);
   perspective: 1200px;
   cursor: pointer;
-  /* Make sure card always fills its grid cell */
-  width: 100%;
+  /* Critical: contain everything inside */
+  overflow: hidden;
 }
 .flip-inner {
   position: relative;
-  width: 100%; height: 100%;
+  width: 100%;
+  height: 100%;
   transform-style: preserve-3d;
   transition: transform 0.65s cubic-bezier(0.4, 0.2, 0.2, 1);
   border-radius: var(--radius);
@@ -339,14 +321,21 @@ nav a:focus-visible { outline: 2px solid var(--green-bright); outline-offset: 4p
 .flip-card.flipped .flip-inner { transform: rotateY(180deg); }
 
 .flip-front, .flip-back {
-  position: absolute; inset: 0;
+  /* Absolutely fill the parent — never grow beyond it */
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
   border-radius: var(--radius);
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   padding: clamp(14px,2vw,22px);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  /* Never let content overflow the fixed height */
   overflow: hidden;
 }
 .flip-back { transform: rotateY(180deg); }
@@ -403,30 +392,39 @@ nav a:focus-visible { outline: 2px solid var(--green-bright); outline-offset: 4p
   color: #b8f0d0;
 }
 
-/* ── FLOOD RAIN ── */
-.flood-front { position: relative; overflow: hidden; }
-.flood-rain {
-  position: absolute; inset: 0;
-  pointer-events: none; overflow: hidden;
-  border-radius: var(--radius);
+/* ── FLOOD WAVE (replaces rain drops) ── */
+/* The wave is absolutely positioned inside flip-front which already has overflow:hidden */
+/* It sits at the bottom and cannot push the card taller */
+.flood-wave-wrap {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 36px;
+  pointer-events: none;
+  /* overflow already clipped by .flip-front */
 }
-.drop {
-  position: absolute; width: 1.5px;
-  background: rgba(125,211,252,0.75);
-  bottom: 100%; border-radius: 99px;
-  animation: rain 0.95s linear infinite;
+.flood-wave {
+  position: absolute;
+  bottom: 0; left: -60%;
+  width: 220%; height: 36px;
+  background: rgba(56,189,248,0.35);
+  border-radius: 40% 60% 40% 60% / 30% 30% 60% 60%;
+  animation: waveSway 3.2s ease-in-out infinite alternate;
 }
-.drop:nth-child(1) { left:8%;  height:14px; animation-delay:0s; }
-.drop:nth-child(2) { left:22%; height:18px; animation-delay:-0.2s; }
-.drop:nth-child(3) { left:38%; height:12px; animation-delay:-0.45s; }
-.drop:nth-child(4) { left:53%; height:20px; animation-delay:-0.1s; }
-.drop:nth-child(5) { left:66%; height:15px; animation-delay:-0.55s; }
-.drop:nth-child(6) { left:80%; height:17px; animation-delay:-0.3s; }
-.drop:nth-child(7) { left:92%; height:13px; animation-delay:-0.65s; }
-@keyframes rain {
-  0%   { transform: translateY(0);     opacity: 0; }
-  10%  { opacity: 1; }
-  100% { transform: translateY(300px); opacity: 0; }
+.flood-wave2 {
+  position: absolute;
+  bottom: 0; left: -60%;
+  width: 220%; height: 26px;
+  background: rgba(125,211,252,0.20);
+  border-radius: 55% 45% 55% 45% / 40% 40% 55% 55%;
+  animation: waveSway2 2.6s ease-in-out infinite alternate;
+}
+@keyframes waveSway {
+  0%   { transform: translateX(0)   scaleY(1); }
+  100% { transform: translateX(10%) scaleY(1.15); }
+}
+@keyframes waveSway2 {
+  0%   { transform: translateX(5%)  scaleY(1); }
+  100% { transform: translateX(-8%) scaleY(1.2); }
 }
 
 /* ── MAP ── */
@@ -545,29 +543,49 @@ canvas {
 .sdg-cards-grid .sdg-card:nth-child(5) { background: linear-gradient(140deg,#065f46,#022c22); }
 .sdg-cards-grid .sdg-card:nth-child(6) { background: linear-gradient(140deg,#0f766e,#134e4a); }
 
-/* ── LEAF DIVIDER ── */
-.leaf-divider {
-  text-align: center;
-  font-size: 20px;
-  opacity: 0.35;
-  letter-spacing: 6px;
-  margin: 0 auto 16px;
-}
-
 /* ── FOOTER ── */
 footer {
   position: relative; z-index: 1;
-  background: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.75);
   backdrop-filter: blur(12px);
   border-top: 1px solid var(--border);
-  padding: 28px clamp(20px,6vw,60px);
+  padding: 32px clamp(20px,6vw,60px) 28px;
   text-align: center;
-  font-size: clamp(11px,1.3vw,13px);
   color: var(--text-dim);
-  letter-spacing: 0.08em;
+}
+.footer-title {
+  font-size: clamp(11px,1.3vw,13px);
+  letter-spacing: 0.10em;
   text-transform: uppercase;
+  font-weight: 500;
+  color: var(--text-dim);
 }
 footer span { color: var(--green-mid); }
+.footer-team {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 20px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.footer-team-label {
+  width: 100%;
+  font-size: clamp(9px, 1vw, 10px);
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  opacity: 0.65;
+}
+.member {
+  font-size: clamp(11px, 1.3vw, 13px);
+  color: var(--green-deep);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
 
 /* ── TAP HINT ── */
 .tap-hint {
@@ -607,7 +625,6 @@ footer span { color: var(--green-mid); }
   <p class="hero-desc">Transforming Pune into a sustainable and inclusive city by addressing key environmental, transport and social challenges.</p>
   <p class="hero-fact">Pune sits on the Mula–Mutha rivers, surrounded by hills, and is one of India's fastest‑growing education and tech hubs — today home to over 7 million people.</p>
   <div class="hero-images">
-    <!-- Че за хуйня?-->>
     <img class="hero-img" src="https://images.pexels.com/photos/4606728/pexels-photo-4606728.jpeg?auto=compress&cs=tinysrgb&w=800" alt="City skyline with green areas">
     <img class="hero-img" src="https://miro.medium.com/v2/resize:fit:1400/1*ot1KQO8D6P1cFOeMXF9kyg.jpeg" alt="People walking and cycling in a street">
   </div>
@@ -657,13 +674,15 @@ footer span { color: var(--green-mid); }
 
     <div class="flip-card issue-card" tabindex="0" role="button" aria-label="Flooding">
       <div class="flip-inner">
-        <div class="flip-front flood-front">
+        <!-- No special class needed — wave is inside flip-front which already has overflow:hidden -->
+        <div class="flip-front">
           <div class="card-icon">🌧️</div>
           <h3>Flooding</h3>
           <p>Monsoon waterlogging in low‑lying areas.</p>
-          <div class="flood-rain">
-            <div class="drop"></div><div class="drop"></div><div class="drop"></div>
-            <div class="drop"></div><div class="drop"></div><div class="drop"></div><div class="drop"></div>
+          <!-- Wave sits absolutely at bottom, clipped by flip-front's overflow:hidden -->
+          <div class="flood-wave-wrap">
+            <div class="flood-wave"></div>
+            <div class="flood-wave2"></div>
           </div>
         </div>
         <div class="flip-back">
@@ -881,7 +900,18 @@ footer span { color: var(--green-mid); }
   </div>
 </section>
 
-<footer>Liveable Cities Project <span>✦</span> Pune 2050</footer>
+<footer>
+  <div class="footer-title">Liveable Cities Project <span>✦</span> Pune 2050</div>
+  <div class="footer-team">
+    <div class="footer-team-label">Project Team</div>
+    <span class="member">Anton Petrovici</span>
+    <span class="member">Ugochukwu Mmadu</span>
+    <span class="member">Josephine Ciupka</span>
+    <span class="member">Emese Krisztina Szabo</span>
+    <span class="member">Alston Pang</span>
+    <span class="member">Caterina Gottardo</span>
+  </div>
+</footer>
 
 <script>
 /* FLIP CARDS */
